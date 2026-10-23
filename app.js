@@ -2,7 +2,7 @@
 const CRIT=[["Sem site/loja própria",20],["Pedidos por Direct/WhatsApp",25],["Produto com preço/catálogo visível",20],["Envia para todo o Brasil",15],["Postou nos últimos ~30 dias",10],["Nicho visual",10]];
 const STATUS=["Novo","Verificar perfil","Abordado","Respondeu","Proposta enviada","Fechado","Perdido"];
 const KEY="kauan-leads-app",SK="kauan-leads-sess";
-let LEADS=[],st={status:{},notas:{},log:{},fu:{},extra:[]},ui={view:"todos",nicho:"Todos",status:"Todos",ord:"score",aberto:""};
+let LEADS=[],st={status:{},notas:{},log:{},fu:{},extra:[]},ui={regiao:"brasil",view:"todos",nicho:"Todos",status:"Todos",ord:"score",aberto:""};
 const $=s=>document.querySelector(s),esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const b64d=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0)),b64e=u=>btoa(String.fromCharCode(...new Uint8Array(u)));
 const phone=s=>{const d=String(s||"").replace(/\D/g,"");if(d.startsWith("55")&&(d.length===12||d.length===13))return d;if(d.length===10||d.length===11)return"55"+d;return""};
@@ -10,7 +10,7 @@ const keyOf=l=>String(l.handle||"").startsWith("@")?l.handle.toLowerCase():"nome
 const score=c=>CRIT.reduce((s,x,i)=>s+(c[i]==="S"?x[1]:0),0);
 const pad=n=>String(n).padStart(2,"0"),dia=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
 const agora=()=>{const d=new Date();return`${dia(d)} ${pad(d.getHours())}:${pad(d.getMinutes())}`},mais=n=>{const d=new Date();d.setDate(d.getDate()+n);return dia(d)};
-const msg=l=>`Oi, tudo bem? Aqui é o Kauan. Vi o perfil da ${l.nome} e curti muito o trabalho com ${String(l.nicho).toLowerCase()}! Percebi que os pedidos são feitos pelo Direct/WhatsApp. Eu crio landing pages: uma página simples, com a cara da marca, que apresenta seus produtos e leva o cliente direto pro seu WhatsApp já sabendo o que quer. Fica ótima no link da bio e nos anúncios. Posso te mostrar uma ideia de como ficaria pra ${l.nome}, sem compromisso?`;
+const msg=l=>(l.regiao==="bahia"&&/^Oi/.test(l.nota||""))?l.nota:`Oi, tudo bem? Aqui é o Kauan. Vi o perfil da ${l.nome} e curti muito o trabalho com ${String(l.nicho).toLowerCase()}! Percebi que os pedidos são feitos pelo Direct/WhatsApp. Eu crio landing pages: uma página simples, com a cara da marca, que apresenta seus produtos e leva o cliente direto pro seu WhatsApp já sabendo o que quer. Fica ótima no link da bio e nos anúncios. Posso te mostrar uma ideia de como ficaria pra ${l.nome}, sem compromisso?`;
 
 async function getEnc(){const r=await fetch("data.enc.json",{cache:"no-store"});if(!r.ok)throw new Error("arquivo");return r.json()}
 async function derive(pw,d){const k=await crypto.subtle.importKey("raw",new TextEncoder().encode(pw),"PBKDF2",false,["deriveKey"]);
@@ -30,13 +30,14 @@ function iniciar(data){LEADS=(data.leads||[]).map(l=>({...l,id:keyOf(l),tel:l.te
   $("#login").hidden=true;$("#app").hidden=false;render()}
 const salvar=()=>{try{localStorage.setItem(KEY,JSON.stringify(st))}catch{alert("Não foi possível salvar neste navegador. Faça backup.")}};
 const todos=()=>{const ids=new Set(LEADS.map(l=>l.id));return[...LEADS,...st.extra.filter(l=>!ids.has(l.id))]};
+const regOf=l=>l.regiao||"brasil";
 const stOf=l=>st.status[l.id]||l.st0||"Novo";
 const hoje=()=>dia(new Date());
 const vencidos=()=>todos().filter(l=>st.fu[l.id]&&st.fu[l.id]<=hoje()&&!["Fechado","Perdido"].includes(stOf(l)));
 function registrar(id,a){const l=todos().find(x=>x.id===id);(st.log[id]=st.log[id]||[]).unshift({t:agora(),a});
   if(["Novo","Verificar perfil"].includes(stOf(l)))st.status[id]="Abordado";salvar();render()}
 
-function render(){const all=todos(),v=vencidos(),h=hoje();
+function render(){const tudo=todos(),all=tudo.filter(l=>regOf(l)===ui.regiao),v=vencidos().filter(l=>regOf(l)===ui.regiao),h=hoje();
   const nichos=["Todos",...new Set(all.map(l=>l.nicho))];
   let lista=(ui.view==="hoje"?v:all).filter(l=>(ui.nicho==="Todos"||l.nicho===ui.nicho)&&(ui.status==="Todos"||stOf(l)===ui.status));
   lista.sort((a,b)=>ui.ord==="score"?score(b.crit)-score(a.crit):ui.ord==="followup"?(st.fu[a.id]||"9").localeCompare(st.fu[b.id]||"9"):ui.ord==="nicho"?String(a.nicho).localeCompare(b.nicho):STATUS.indexOf(stOf(a))-STATUS.indexOf(stOf(b)));
@@ -44,6 +45,7 @@ function render(){const all=todos(),v=vencidos(),h=hoje();
   const porSt=STATUS.map(s=>[s,all.filter(l=>stOf(l)===s).length]).filter(x=>x[1]);
   $("#app").innerHTML=`<div class="wrap">
   <div class="row" style="justify-content:space-between"><h1>Leads</h1><button data-a="sair">Sair</button></div>
+  <div class="tabs">${[["brasil","Brasil"],["bahia","Bahia"]].map(x=>`<button data-a="reg" data-v="${x[0]}" class="tab ${ui.regiao===x[0]?"on":""}">${x[1]} (${tudo.filter(l=>regOf(l)===x[0]).length})</button>`).join("")}</div>
   <p class="mut">Hoje é ${h}.</p>
   <div class="metrics"><div class="metric"><b>${all.length}</b>Leads</div><div class="metric"><b>${all.filter(l=>l.add===h).length}</b>Novos hoje</div><div class="metric"><b class="${v.length?"warn":""}">${v.length}</b>Follow-ups hoje</div></div>
   <p class="mut">${porSt.map(x=>`${esc(x[0])}: ${x[1]}`).join(" · ")}</p>
@@ -81,12 +83,12 @@ function card(l){const open=ui.aberto===l.id,lg=st.log[l.id]||[],s=stOf(l),fu=st
    ${lg.length?`<dl>${lg.slice(0,10).map(x=>`<dt>${esc(x.t)}</dt><dd>${esc(x.a)}</dd>`).join("")}</dl>`:""}</div>`:""}</div>`}
 
 document.addEventListener("click",async e=>{const b=e.target.closest("[data-a]");if(!b||!$("#app").contains(b))return;const a=b.dataset.a,id=b.dataset.id;
-  if(a==="sair")sair();else if(a==="view"){ui.view=b.dataset.v;render()}else if(a==="toggle"){ui.aberto=ui.aberto===id?"":id;render()}
+  if(a==="sair")sair();else if(a==="reg"){ui.regiao=b.dataset.v;ui.nicho="Todos";ui.aberto="";render()}else if(a==="view"){ui.view=b.dataset.v;render()}else if(a==="toggle"){ui.aberto=ui.aberto===id?"":id;render()}
   else if(a==="log")registrar(id,b.dataset.v);else if(a==="wa")setTimeout(()=>registrar(id,"Mandei mensagem"),300);
   else if(a==="fuq"){st.fu[id]=b.dataset.v?mais(+b.dataset.v):"";salvar();render()}
   else if(a==="copy"){const l=todos().find(x=>x.id===id);try{await navigator.clipboard.writeText(msg(l));b.textContent="Copiado!"}catch{b.textContent="Selecione o texto e copie"}}
   else if(a==="add"){const g=k=>$("#n_"+k).value.trim();if(!g("nome"))return alert("Informe o nome.");const h=g("handle")?g("handle").replace(/^@?/,"@"):"n/d";
-    const l={nome:g("nome"),handle:h,url:h!=="n/d"?`https://www.instagram.com/${h.slice(1)}/`:"",nicho:g("nicho")||"n/d",cidade:g("cidade")||"n/d",seg:"n/d",contato:g("tel")?"Tel "+g("tel"):"n/d",evid:g("evid")||"n/d",fonte:"adicionado manualmente",crit:CRIT.map((c,i)=>$("#n_c"+i).value).join(""),verificado:false,fraco:true,bio:"n/d",ult:"n/d",st0:"Novo",nota:"",tel:phone(g("tel")),add:hoje()};
+    const l={nome:g("nome"),handle:h,url:h!=="n/d"?`https://www.instagram.com/${h.slice(1)}/`:"",nicho:g("nicho")||"n/d",cidade:g("cidade")||"n/d",seg:"n/d",contato:g("tel")?"Tel "+g("tel"):"n/d",evid:g("evid")||"n/d",fonte:"adicionado manualmente",crit:CRIT.map((c,i)=>$("#n_c"+i).value).join(""),verificado:false,fraco:true,bio:"n/d",ult:"n/d",st0:"Novo",nota:"",tel:phone(g("tel")),add:hoje(),regiao:ui.regiao};
     l.id=keyOf(l);st.extra=st.extra.filter(x=>x.id!==l.id).concat(l);ui.aberto=l.id;salvar();render()}
   else if(a==="exp"){const s=JSON.stringify({app:KEY,exportado:agora(),dados:st},null,1);$("#io").value=s;
     try{const u=URL.createObjectURL(new Blob([s],{type:"application/json"}));const x=document.createElement("a");x.href=u;x.download=`leads-backup-${hoje()}.json`;x.click();setTimeout(()=>URL.revokeObjectURL(u),1000)}catch{}

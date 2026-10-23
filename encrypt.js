@@ -20,7 +20,7 @@ function load() { const t = fs.readFileSync(src, "utf8");
   return parseCSV(t).map(x => ({ nome: x.business_name, handle: x.instagram_handle, url: x.profile_url === "n/d" ? "" : x.profile_url,
     nicho: x.niche, cidade: x.city_state, seg: x.followers, contato: x.public_contact, evid: x.evidence_no_store, fonte: x.source_url,
     crit: x["criterios_SN?"] || "??????", verificado: (x.verification || "").startsWith("verified"), bio: x.bio_link || "n/d",
-    ult: x.last_post || "n/d", st0: x.status || "Novo", nota: x.note || "", tel: phone(x.phone || x.public_contact), add: x.added || "2026-10-22" })); }
+    ult: x.last_post || "n/d", st0: x.status || "Novo", nota: x.note || "", tel: phone(x.phone || x.public_contact), add: x.added || "2026-10-22", regiao: (x.region || "brasil").toLowerCase() })); }
 const b64 = u => Buffer.from(u).toString("base64");
 async function main() {
   const leads = load(); const enc = new TextEncoder();

@@ -18,3 +18,4 @@ button,.btn{font:inherit;font-size:15px;padding:10px 14px;border:1px solid var(-
 .erro{color:var(--dan)}.chk{display:flex;gap:8px;align-items:center}.chk input{width:auto}
 details{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:10px 12px;margin-top:12px}summary{font-weight:600;cursor:pointer}
 dl{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;margin:0;font-size:.85rem}dt{color:var(--mut)}dd{margin:0}
+.tabs{display:flex;gap:6px;margin:6px 0 2px}.tab{flex:1;font-weight:600}
