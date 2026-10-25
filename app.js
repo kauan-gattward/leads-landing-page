@@ -10,7 +10,7 @@ const keyOf=l=>String(l.handle||"").startsWith("@")?l.handle.toLowerCase():"nome
 const score=c=>CRIT.reduce((s,x,i)=>s+(c[i]==="S"?x[1]:0),0);
 const pad=n=>String(n).padStart(2,"0"),dia=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
 const agora=()=>{const d=new Date();return`${dia(d)} ${pad(d.getHours())}:${pad(d.getMinutes())}`},mais=n=>{const d=new Date();d.setDate(d.getDate()+n);return dia(d)};
-const msg=l=>(l.regiao==="bahia"&&/^Oi/.test(l.nota||""))?l.nota:`Oi, tudo bem? Aqui é o Kauan. Vi o perfil da ${l.nome} e curti muito o trabalho com ${String(l.nicho).toLowerCase()}! Percebi que os pedidos são feitos pelo Direct/WhatsApp. Eu crio landing pages: uma página simples, com a cara da marca, que apresenta seus produtos e leva o cliente direto pro seu WhatsApp já sabendo o que quer. Fica ótima no link da bio e nos anúncios. Posso te mostrar uma ideia de como ficaria pra ${l.nome}, sem compromisso?`;
+const msg=l=>/^Oi/.test(l.nota||"")?l.nota:`Oi, tudo bem? Aqui é o Kauan. Vi o perfil da ${l.nome} e curti muito o trabalho com ${String(l.nicho).toLowerCase()}! Percebi que os pedidos são feitos pelo Direct/WhatsApp. Eu crio landing pages: uma página simples, com a cara da marca, que apresenta seus produtos e leva o cliente direto pro seu WhatsApp já sabendo o que quer. Fica ótima no link da bio e nos anúncios. Posso te mostrar uma ideia de como ficaria pra ${l.nome}, sem compromisso?`;
 
 async function getEnc(){const r=await fetch("data.enc.json",{cache:"no-store"});if(!r.ok)throw new Error("arquivo");return r.json()}
 async function derive(pw,d){const k=await crypto.subtle.importKey("raw",new TextEncoder().encode(pw),"PBKDF2",false,["deriveKey"]);
