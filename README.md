@@ -2,6 +2,13 @@
 
 App mobile para gerenciar leads: painel, cartões com **Ligar** e **WhatsApp** (mensagem pronta), status, notas, registro de contatos, follow-ups com a visão **Hoje**, score, filtros, adicionar lead e backup JSON.
 
+## Visual
+O app abre no visual **Estúdio**: fundo leve, vidro e transições curtas. No topo (e na tela da senha) dá para alternar para **3D**. A escolha fica salva neste aparelho.
+
+Atalho: [`3d.html`](3d.html) liga o fundo 3D e entra no app. Dá para deixar os dois na tela inicial.
+
+O 3D é um shader WebGL leve (não carrega biblioteca). Ele respeita "reduzir movimento" (mostra um quadro parado), baixa a resolução em aparelhos fracos e, se o gráfico não aguentar ou o WebGL falhar, volta sozinho para o fundo leve. A criptografia e o `data.enc.json` não mudam.
+
 ## Segurança
 - Os leads ficam **só criptografados** em `data.enc.json` (AES-GCM 256, chave PBKDF2-SHA256 com 310.000 iterações, salt e IV aleatórios, base64).
 - A descriptografia acontece no navegador (WebCrypto) depois que você digita a senha. Senha errada mostra erro.
