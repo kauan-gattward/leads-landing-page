@@ -1,5 +1,7 @@
 // Uso: LEADS_APP_PASSWORD=... node encrypt.js [entrada.csv|leads.json] [saida]
-// Nunca imprime a senha.
+// Opcional: LEADS_STAFF_PASSWORD=... gera o envelope da equipe (v2).
+// Sem essa variável o arquivo continua no formato v1 de hoje.
+// Nunca imprime senha.
 const fs = require("fs"); const { webcrypto: c } = require("crypto");
 const ITER = 310000;
 const src = process.argv[2] || "/workspace/leads/leads_instagram.csv";
@@ -22,13 +24,30 @@ function load() { const t = fs.readFileSync(src, "utf8");
     crit: x["criterios_SN?"] || "??????", verificado: (x.verification || "").startsWith("verified"), bio: x.bio_link || "n/d",
     ult: x.last_post || "n/d", st0: x.status || "Novo", nota: x.note || "", tel: phone(x.phone || x.public_contact), add: x.added || "2026-10-22", regiao: (x.region || "brasil").toLowerCase() })); }
 const b64 = u => Buffer.from(u).toString("base64");
+async function wrapKey(enc, raw, password, role) {
+  const salt = c.getRandomValues(new Uint8Array(16)), iv = c.getRandomValues(new Uint8Array(12));
+  const base = await c.subtle.importKey("raw", enc.encode(password), "PBKDF2", false, ["deriveKey"]);
+  const key = await c.subtle.deriveKey({ name: "PBKDF2", hash: "SHA-256", salt, iterations: ITER }, base, { name: "AES-GCM", length: 256 }, false, ["encrypt"]);
+  const ct = await c.subtle.encrypt({ name: "AES-GCM", iv }, key, raw);
+  return { role, salt: b64(salt), iv: b64(iv), ct: b64(new Uint8Array(ct)) };
+}
 async function main() {
   const leads = load(); const enc = new TextEncoder();
-  const salt = c.getRandomValues(new Uint8Array(16)), iv = c.getRandomValues(new Uint8Array(12));
-  const base = await c.subtle.importKey("raw", enc.encode(pw), "PBKDF2", false, ["deriveKey"]);
-  const key = await c.subtle.deriveKey({ name: "PBKDF2", hash: "SHA-256", salt, iterations: ITER }, base, { name: "AES-GCM", length: 256 }, false, ["encrypt"]);
-  const ct = await c.subtle.encrypt({ name: "AES-GCM", iv }, key, enc.encode(JSON.stringify({ geradoEm: new Date().toISOString(), leads })));
-  fs.writeFileSync(out, JSON.stringify({ v: 1, kdf: "PBKDF2-SHA256", iter: ITER, salt: b64(salt), iv: b64(iv), ct: b64(new Uint8Array(ct)) }));
+  const plain = enc.encode(JSON.stringify({ geradoEm: new Date().toISOString(), leads }));
+  const staff = process.env.LEADS_STAFF_PASSWORD;
+  if (typeof staff === "string" && staff.length) {
+    const raw = c.getRandomValues(new Uint8Array(32)), iv = c.getRandomValues(new Uint8Array(12));
+    const dataKey = await c.subtle.importKey("raw", raw, "AES-GCM", false, ["encrypt"]);
+    const ct = await c.subtle.encrypt({ name: "AES-GCM", iv }, dataKey, plain);
+    const wraps = [await wrapKey(enc, raw, pw, "owner"), await wrapKey(enc, raw, staff, "staff")];
+    fs.writeFileSync(out, JSON.stringify({ v: 2, kdf: "PBKDF2-SHA256", iter: ITER, iv: b64(iv), ct: b64(new Uint8Array(ct)), wraps }));
+  } else {
+    const salt = c.getRandomValues(new Uint8Array(16)), iv = c.getRandomValues(new Uint8Array(12));
+    const base = await c.subtle.importKey("raw", enc.encode(pw), "PBKDF2", false, ["deriveKey"]);
+    const key = await c.subtle.deriveKey({ name: "PBKDF2", hash: "SHA-256", salt, iterations: ITER }, base, { name: "AES-GCM", length: 256 }, false, ["encrypt"]);
+    const ct = await c.subtle.encrypt({ name: "AES-GCM", iv }, key, plain);
+    fs.writeFileSync(out, JSON.stringify({ v: 1, kdf: "PBKDF2-SHA256", iter: ITER, salt: b64(salt), iv: b64(iv), ct: b64(new Uint8Array(ct)) }));
+  }
   console.log(`data.enc.json gerado (${leads.length} leads).`);
 }
 main().catch(e => { console.error("Erro:", e.message); process.exit(1); });
