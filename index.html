@@ -2,27 +2,65 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#0f172a">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+<meta name="theme-color" content="#efeae2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#07080c" media="(prefers-color-scheme: dark)">
+<meta name="color-scheme" content="light dark">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Leads">
 <meta name="robots" content="noindex, nofollow">
+<meta name="description" content="Caderno privado de leads.">
 <link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="favicon.ico" sizes="16x16">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="preload" href="fonts/outfit-400.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/outfit-600.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/fraunces-600.woff2" as="font" type="font/woff2" crossorigin>
 <title>Leads – Landing Page</title>
+<script>
+try {
+  var q = new URLSearchParams(location.search).get("bg");
+  var v = (q === "3d" || q === "studio") ? q : localStorage.getItem("kauan-leads-visual");
+  if (v === "3d") document.documentElement.classList.add("want-3d");
+} catch (e) {}
+</script>
+<style>html.want-3d,html.want-3d body{background:#07080c}</style>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<div id="login" class="login">
-  <h1>Leads</h1>
-  <p>Digite a senha para abrir os dados.</p>
-  <input id="pw" type="password" autocomplete="current-password" placeholder="Senha">
-  <label class="chk"><input id="lembrar" type="checkbox" checked> Lembrar nesta sessão</label>
-  <button id="entrar" class="primary">Entrar</button>
-  <p id="erro" class="erro" hidden></p>
+<div class="atmo" aria-hidden="true"><span class="blob b1"></span><span class="blob b2"></span><span class="blob b3"></span></div>
+<canvas id="bg3d" class="off" aria-hidden="true"></canvas>
+<div id="login" class="gate">
+  <div class="gate-card">
+    <div class="mark" aria-hidden="true">L</div>
+    <p class="eyebrow">Caderno privado</p>
+    <h1>Leads</h1>
+    <p class="lede">Digite a senha para abrir os dados.</p>
+    <form id="gate-form" autocomplete="on">
+      <div class="field">
+        <label for="pw">Senha</label>
+        <div class="pw">
+          <input id="pw" type="password" autocomplete="current-password" placeholder="Senha" enterkeyhint="go">
+          <button type="button" id="ver-senha" aria-pressed="false">Mostrar</button>
+        </div>
+      </div>
+      <label class="chk"><input id="lembrar" type="checkbox" checked> Lembrar nesta sessão</label>
+      <button id="entrar" class="primary" type="submit">Entrar</button>
+      <p id="erro" class="erro" role="alert" hidden></p>
+    </form>
+    <div class="seg" style="--i:0" role="group" aria-label="Visual do fundo">
+      <span class="seg-glider" data-glider="loginvis" data-i="0"></span>
+      <button type="button" data-a="visual" data-v="studio" class="on" aria-pressed="true">Estúdio</button>
+      <button type="button" data-a="visual" data-v="3d" aria-pressed="false">3D</button>
+    </div>
+    <p class="fine">O fundo 3D também abre em <a href="3d.html">3d.html</a>.</p>
+    <p class="bg-msg fine" hidden></p>
+  </div>
 </div>
 <div id="app" hidden></div>
+<script src="bg3d.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

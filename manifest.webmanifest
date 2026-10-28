@@ -1,1 +1,9 @@
-{"name":"Leads – Landing Page","short_name":"Leads","start_url":".","display":"standalone","background_color":"#0f172a","theme_color":"#0f172a","lang":"pt-BR"}
+{
+  "name": "Leads – Landing Page",
+  "short_name": "Leads",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#07080c",
+  "theme_color": "#07080c",
+  "lang": "pt-BR"
+}
