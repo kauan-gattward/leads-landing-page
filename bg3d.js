@@ -9,15 +9,23 @@ globalThis.Bg3d = (() => {
   let startAt = 0, last = 0, acc = 999;
   let px = 0, py = 0, tx = 0, ty = 0;
 
-  const FPS = { low: 24, mid: 30, high: 30 };
-  const SCALE = { low: 0.42, mid: 0.58, high: 0.7 };
-  const CAP = { low: 640, mid: 880, high: 1080 };
+  const FPS = 30;
+  const SCALE = { low: 0.4, mid: 0.5, high: 0.58 };
+  const CAP = { low: 640, mid: 800, high: 960 };
+  let quiet = false, hold = false;
 
+  function lowEnd() {
+    const mem = navigator.deviceMemory;
+    const cores = navigator.hardwareConcurrency;
+    const save = navigator.connection && navigator.connection.saveData;
+    if (save) return true;
+    if (mem && mem <= 2) return true;
+    if (cores && cores <= 2) return true;
+    return false;
+  }
   function detectTier() {
     const mem = navigator.deviceMemory || 8;
     const cores = navigator.hardwareConcurrency || 8;
-    const save = navigator.connection && navigator.connection.saveData;
-    if (save || mem <= 2 || cores <= 2) return "low";
     if (mem <= 4 || cores <= 4) return "mid";
     return "high";
   }
@@ -30,8 +38,7 @@ globalThis.Bg3d = (() => {
   }
 
   function fallback(text) {
-    alive = false;
-    cancelAnimationFrame(raf);
+    stopLoop();
     message = text;
     if (canvas) canvas.classList.add("off");
     document.body.classList.remove("webgl-ok");
@@ -83,8 +90,8 @@ globalThis.Bg3d = (() => {
         return mix(mix(a,b,u.x), mix(c,d,u.x), u.y);
       }
       float fbm(vec2 p){
-        float v = 0.0, a = 0.55;
-        for (int i = 0; i < 3; i++) { v += a * noise(p); p = p * 2.04 + vec2(1.7, 9.2); a *= 0.5; }
+        float v = 0.0, a = 0.6;
+        for (int i = 0; i < 2; i++) { v += a * noise(p); p = p * 2.02 + vec2(1.7, 9.2); a *= 0.5; }
         return v;
       }
       vec4 orb(vec2 uv, vec2 c, float r, vec3 color){
@@ -106,8 +113,8 @@ globalThis.Bg3d = (() => {
         vec2 uv = (gl_FragCoord.xy - 0.5 * u_res) / min(u_res.x, u_res.y);
         uv += u_ptr * 0.055;
         float t = u_time * 0.055;
-        float n = fbm(uv * 1.32 + vec2(t, -t * 0.65));
-        float n2 = fbm(uv * 1.05 + n * 1.2 + vec2(-t * 0.4, t * 0.32));
+        float n = fbm(uv * 1.25 + vec2(t, -t * 0.55));
+        float n2 = n;
         vec3 col = mix(vec3(0.02, 0.025, 0.034), vec3(0.035, 0.09, 0.075), smoothstep(0.25, 0.8, n2));
         col = mix(col, vec3(0.09, 0.38, 0.3), smoothstep(0.48, 0.92, n) * 0.5);
         col = mix(col, vec3(0.55, 0.4, 0.2), smoothstep(0.66, 0.98, n2) * 0.22);
@@ -161,7 +168,7 @@ globalThis.Bg3d = (() => {
 
   function resize() {
     if (!gl) return;
-    const dpr = Math.min(window.devicePixelRatio || 1, 1.35) * SCALE[tier] * scaleMul;
+    const dpr = Math.min(window.devicePixelRatio || 1, 1.5) * SCALE[tier] * scaleMul;
     let w = Math.max(2, Math.round(Math.max(1, window.innerWidth) * dpr));
     let h = Math.max(2, Math.round(Math.max(1, window.innerHeight) * dpr));
     const cap = CAP[tier];
@@ -196,22 +203,18 @@ globalThis.Bg3d = (() => {
     fallback("O fundo 3D pesou neste aparelho e voltou para o visual leve.");
   }
 
-  function frame(now) {
-    if (!alive) return;
+  let lastDraw = 0;
+  function schedule() { raf = requestAnimationFrame(tick); }
+  function tick(now) {
+    if (!alive || quiet || hold) return;
     const dt = now - last;
     last = now;
-    acc += dt;
-    if (now - startAt > 1200) {
-      if (dt > (tier === "low" ? 72 : 56)) slow++;
-      else slow = Math.max(0, slow - 1);
-      if (slow > 28) degrade();
-    }
-    if (!alive) return;
-    if (acc >= 1000 / FPS[tier]) {
-      acc = 0;
-      draw(now / 1000);
-    }
-    raf = requestAnimationFrame(frame);
+    if (now - startAt > 1200 && dt > 48) slow++;
+    else if (dt > 0 && dt < 40) slow = Math.max(0, slow - 1);
+    if (slow > 18) degrade();
+    if (!alive || quiet || hold) return;
+    if (now - lastDraw >= 1000 / FPS) { lastDraw = now; draw(now / 1000); }
+    raf = requestAnimationFrame(tick);
   }
 
   function stopLoop() {
@@ -219,10 +222,22 @@ globalThis.Bg3d = (() => {
     cancelAnimationFrame(raf);
   }
 
+  function setQuiet(on) {
+    quiet = !!on;
+    if (quiet) { cancelAnimationFrame(raf); return; }
+    if (!alive || reduced() || document.hidden || hold) return;
+    last = performance.now();
+    slow = 0;
+    schedule();
+  }
   function start() {
     stopLoop();
     message = "";
     if (!canvas) return;
+    if (lowEnd()) {
+      fallback("Aparelho leve: o fundo ficou estático para não travar.");
+      return;
+    }
     if (!initGL()) {
       fallback("WebGL não está disponível neste aparelho. Mantive o fundo leve.");
       return;
@@ -243,7 +258,7 @@ globalThis.Bg3d = (() => {
     last = startAt;
     acc = 999;
     slow = 0;
-    raf = requestAnimationFrame(frame);
+    if (!quiet && !hold && !document.hidden) schedule();
   }
 
   function stop() {
@@ -259,13 +274,32 @@ globalThis.Bg3d = (() => {
     ty = (e.clientY / Math.max(1, innerHeight)) * 2 - 1;
   }, { passive: true });
   addEventListener("resize", () => { if (prog && canvas && !canvas.classList.contains("off")) resize(); });
+  let quietTimer = 0;
+  function bumpQuiet() {
+    document.body.classList.add("is-quiet");
+    setQuiet(true);
+    clearTimeout(quietTimer);
+    quietTimer = setTimeout(() => {
+      if (document.hidden) return;
+      document.body.classList.remove("is-quiet");
+      setQuiet(false);
+    }, 180);
+  }
   document.addEventListener("visibilitychange", () => {
-    if (document.hidden) { cancelAnimationFrame(raf); return; }
-    if (!alive || reduced()) return;
-    last = performance.now();
-    slow = 0;
-    raf = requestAnimationFrame(frame);
+    if (document.hidden) {
+      document.body.classList.add("is-quiet");
+      hold = true;
+      setQuiet(true);
+      return;
+    }
+    hold = false;
+    document.body.classList.remove("is-quiet");
+    setQuiet(false);
   });
+  addEventListener("scroll", bumpQuiet, { passive: true, capture: true });
+  addEventListener("pointerdown", bumpQuiet, { passive: true });
+  addEventListener("touchstart", bumpQuiet, { passive: true });
+  document.addEventListener("input", bumpQuiet, true);
   matchMedia("(prefers-reduced-motion: reduce)").addEventListener("change", () => {
     if (document.body.classList.contains("mode-3d")) start();
   });
@@ -273,6 +307,8 @@ globalThis.Bg3d = (() => {
   return {
     start,
     stop,
+    setQuiet,
+    lowEnd,
     get message() { return message; }
   };
 })();
